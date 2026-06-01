@@ -381,7 +381,771 @@
     </div>
 </header>
 
-<!-- Le reste du code est identique à la version précédente, jusqu'au script -->
-<!-- Onglets, contenus, modales, etc. (inchangés) -->
+<!-- Onglets -->
+<div class="tab-bar">
+    <button class="tab-btn active" data-tab="transactions" id="tabTransactions">💳 Transactions</button>
+    <button class="tab-btn" data-tab="bills" id="tabBills">📋 Factures</button>
+    <button class="tab-btn" data-tab="reports" id="tabReports">📊 Rapports</button>
+</div>
 
-<!-- ... (inclure tout le contenu HTML et le script JavaScript de la réponse précédente, sauf que dans le script, on garde la fonction translateStatic() qui ne touche pas au nouveau span "header-credits", car il n'est pas traduit. On peut ajouter une traduction optionnelle, mais le nom reste fixe.) -->
+<!-- Contenu Transactions -->
+<div class="tab-content active" id="tab-content-transactions">
+    <div class="balance-card">
+        <div class="label" id="lblSoldeActuel">Solde Actuel</div>
+        <div class="amount" id="soldeActuelValue">0 Ar</div>
+        <div class="balance-msg" id="balanceMsg"></div>
+    </div>
+
+    <div class="monthly-card">
+        <div class="month-nav">
+            <button id="prevMonth">◀</button>
+            <span class="month-label" id="currentMonthLabel"></span>
+            <button id="nextMonth">▶</button>
+        </div>
+        <div class="summary-row">
+            <div class="summary-item"><div class="label" id="lblIncome">Revenus</div><div class="value income-value" id="totalIncome">0 Ar</div></div>
+            <div class="summary-item"><div class="label" id="lblExpense">Dépenses</div><div class="value expense-value" id="totalExpense">0 Ar</div></div>
+        </div>
+        <div class="budget-bar" id="budgetBarContainer" style="display:none;"><div class="budget-fill" id="budgetFill"></div></div>
+        <div class="budget-label" id="budgetLabel" style="display:none;"><span>Dépensé</span><span id="budgetPercent">0%</span></div>
+        <div class="month-balance" id="balance">Solde : 0 Ar</div>
+    </div>
+
+    <div class="transaction-list" id="transactionsList">
+        <div class="empty-state" id="emptyTransactions">✨ Aucune transaction ce mois</div>
+    </div>
+</div>
+
+<!-- Contenu Factures -->
+<div class="tab-content" id="tab-content-bills">
+    <div class="bill-list" id="billsList" style="margin-top:20px;">
+        <div class="empty-state" id="emptyBills">📋 Aucune facture enregistrée</div>
+    </div>
+</div>
+
+<!-- Contenu Rapports -->
+<div class="tab-content" id="tab-content-reports">
+    <div class="report-period-selector">
+        <select id="reportPeriod" onchange="updateReport()">
+            <option value="1">1 mois</option>
+            <option value="3" selected>3 mois</option>
+            <option value="6">6 mois</option>
+            <option value="12">12 mois</option>
+        </select>
+    </div>
+    <div class="report-summary-cards">
+        <div class="report-card">
+            <div class="label" id="lblReportIncome">Revenus</div>
+            <div class="value income-value" id="reportIncome">0</div>
+        </div>
+        <div class="report-card">
+            <div class="label" id="lblReportExpense">Dépenses</div>
+            <div class="value expense-value" id="reportExpense">0</div>
+        </div>
+        <div class="report-card">
+            <div class="label" id="lblReportBalance">Solde</div>
+            <div class="value" id="reportBalance" style="color: var(--primary);">0</div>
+        </div>
+    </div>
+    <div class="report-chart" id="reportChartContainer">
+        <div id="chartTitle" style="font-weight:600; margin-bottom:8px;">Évolution mensuelle</div>
+        <div class="chart-bars" id="chartBars"></div>
+        <div class="chart-labels" id="chartLabels"></div>
+    </div>
+    <div class="export-import-btns">
+        <button class="btn-export" id="btnExport">📤 Exporter</button>
+        <button class="btn-import" id="btnImport">📥 Importer</button>
+        <input type="file" id="importFileInput" accept=".json">
+    </div>
+</div>
+
+<!-- Barre du bas (dynamique) -->
+<div class="bottom-bar" id="bottomBar"></div>
+
+<!-- Modales -->
+<div class="modal" id="incomeModal">
+    <div class="modal-content">
+        <h2 id="incomeTitle">➕ Ajouter un revenu</h2>
+        <div class="input-group"><label for="incomeAmount">Montant</label><input type="number" id="incomeAmount" placeholder="0" step="1" min="1"></div>
+        <div class="input-group"><label for="incomeSource">Provenance</label><input type="text" id="incomeSource" placeholder="Ex: salaire, vente"></div>
+        <div class="input-group"><label for="incomeDate">Date</label><input type="date" id="incomeDate"></div>
+        <div class="input-group"><label>Émoji</label><div class="emoji-picker" id="incomeEmojiPicker"></div></div>
+        <div class="input-group"><label for="incomeNote">Note</label><textarea id="incomeNote" placeholder="Détails..."></textarea></div>
+        <div class="modal-buttons"><button class="btn-cancel" id="cancelIncome">Annuler</button><button class="btn-primary" id="saveIncome">Enregistrer</button></div>
+    </div>
+</div>
+
+<div class="modal" id="expenseModal">
+    <div class="modal-content">
+        <h2 id="expenseTitle">➖ Ajouter une dépense</h2>
+        <div class="input-group"><label for="expenseAmount">Montant</label><input type="number" id="expenseAmount" placeholder="0" step="1" min="1"></div>
+        <div class="input-group"><label for="expenseReason">Motif</label><input type="text" id="expenseReason" placeholder="Ex: courses, loyer"></div>
+        <div class="input-group"><label for="expenseDate">Date</label><input type="date" id="expenseDate"></div>
+        <div class="input-group"><label>Émoji</label><div class="emoji-picker" id="expenseEmojiPicker"></div></div>
+        <div class="input-group"><label for="expenseNote">Note</label><textarea id="expenseNote" placeholder="Détails..."></textarea></div>
+        <div class="modal-buttons"><button class="btn-cancel" id="cancelExpense">Annuler</button><button class="btn-primary" id="saveExpense">Enregistrer</button></div>
+    </div>
+</div>
+
+<div class="modal" id="billModal">
+    <div class="modal-content">
+        <h2 id="billTitle">📋 Ajouter une facture</h2>
+        <div class="input-group"><label for="billLabel">Libellé</label><input type="text" id="billLabel" placeholder="Ex: Électricité, Loyer"></div>
+        <div class="input-group"><label for="billAmount">Montant</label><input type="number" id="billAmount" placeholder="0" step="1" min="1"></div>
+        <div class="input-group"><label for="billDueDate">Échéance (optionnel)</label><input type="date" id="billDueDate"></div>
+        <div class="input-group"><label>Émoji</label><div class="emoji-picker" id="billEmojiPicker"></div></div>
+        <div class="input-group"><label for="billNote">Note</label><textarea id="billNote" placeholder="Détails..."></textarea></div>
+        <div class="modal-buttons"><button class="btn-cancel" id="cancelBill">Annuler</button><button class="btn-primary" id="saveBill">Enregistrer</button></div>
+    </div>
+</div>
+
+<div class="modal" id="settingsModal">
+    <div class="modal-content">
+        <h2 id="settingsTitle">⚙️ Paramètres</h2>
+        <div class="setting-group">
+            <div class="group-label" id="lblLanguage">🌐 Langue</div>
+            <div class="option-list" id="languageOptions">
+                <button data-lang="fr">🇫🇷 Français</button>
+                <button data-lang="mg">🇲🇬 Malagasy</button>
+                <button data-lang="en">🇬🇧 English</button>
+            </div>
+        </div>
+        <div class="setting-group">
+            <div class="group-label" id="lblCurrency">💱 Devise</div>
+            <div class="option-list" id="currencyOptions">
+                <button data-currency="MGA">Ar Ariary</button>
+                <button data-currency="EUR">€ Euro</button>
+                <button data-currency="USD">$ Dollar US</button>
+            </div>
+        </div>
+        <div class="setting-group">
+            <div class="group-label" id="lblBudget">🎯 Budget mensuel (optionnel)</div>
+            <input type="number" id="budgetInput" placeholder="Ex: 500000" step="1" min="0" style="width:100%; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+        </div>
+        <div class="modal-buttons"><button class="btn-cancel" id="closeSettings">Fermer</button></div>
+    </div>
+</div>
+
+<div class="modal" id="helpModal">
+    <div class="modal-content">
+        <h2 id="helpTitle">❓ Guide d'utilisation</h2>
+        <div class="help-text" id="helpContent"></div>
+        <div class="modal-buttons"><button class="btn-cancel" id="closeHelp">Fermer</button></div>
+    </div>
+</div>
+
+<script>
+    const translations = {
+        fr: {
+            appTitle: "💰 Fintracker",
+            tabTransactions: "💳 Transactions",
+            tabBills: "📋 Factures",
+            tabReports: "📊 Rapports",
+            lblSoldeActuel: "Solde Actuel",
+            lblIncome: "Revenus",
+            lblExpense: "Dépenses",
+            balancePrefix: "Solde du mois",
+            emptyTransactions: "✨ Aucune transaction ce mois",
+            emptyBills: "📋 Aucune facture enregistrée",
+            incomeTitle: "➕ Ajouter un revenu",
+            expenseTitle: "➖ Ajouter une dépense",
+            billTitle: "📋 Ajouter une facture",
+            amountLabel: "Montant",
+            sourceLabel: "Provenance",
+            reasonLabel: "Motif",
+            billLabel: "Libellé",
+            dateLabel: "Date",
+            dueDateLabel: "Échéance (optionnel)",
+            emojiLabel: "Émoji",
+            noteLabel: "Note",
+            save: "Enregistrer",
+            cancel: "Annuler",
+            settingsTitle: "⚙️ Paramètres",
+            languageLabel: "🌐 Langue",
+            currencyLabel: "💱 Devise",
+            budgetLabel: "🎯 Budget mensuel",
+            close: "Fermer",
+            months: ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],
+            btnIncome: "💰 Revenu",
+            btnExpense: "💸 Dépense",
+            btnBill: "📋 Facture",
+            positiveMsg: "🎉 Vous êtes dans le vert !",
+            negativeMsg: "⚠️ Attention, votre solde est négatif.",
+            zeroMsg: "🤝 Votre solde est à l'équilibre.",
+            helpTitle: "❓ Guide d'utilisation",
+            helpContent: `<p><strong>💰 Solde actuel</strong> : votre argent total (revenus - dépenses).</p><p><strong>📆 Résumé mensuel</strong> : revenus et dépenses du mois sélectionné, avec une barre de budget.</p><p><strong>💳 Transactions</strong> : ajoutez revenus/dépenses avec date, émoji et note.</p><p><strong>📋 Factures</strong> : gérez vos factures à payer, cochez-les quand elles sont réglées.</p><p><strong>⚙️ Paramètres</strong> : langue, devise, budget.</p><p><strong>📊 Rapports</strong> : résumé sur plusieurs mois, graphiques, export/import des données.</p>`,
+            reportPeriodLabel: "Période",
+            reportIncomeLabel: "Revenus",
+            reportExpenseLabel: "Dépenses",
+            reportBalanceLabel: "Solde",
+            chartTitle: "Évolution mensuelle",
+            exportBtn: "📤 Exporter",
+            importBtn: "📥 Importer"
+        },
+        mg: {
+            appTitle: "💰 Fintracker",
+            tabTransactions: "💳 Fifanakalozana",
+            tabBills: "📋 Facture",
+            tabReports: "📊 Tatitra",
+            lblSoldeActuel: "Solde Ankehitriny",
+            lblIncome: "Fidiram-bola",
+            lblExpense: "Fandaniana",
+            balancePrefix: "Solde volana",
+            emptyTransactions: "✨ Tsy misy fifanakalozana",
+            emptyBills: "📋 Tsy misy facture",
+            incomeTitle: "➕ Hanampy fidiram-bola",
+            expenseTitle: "➖ Hanampy fandaniana",
+            billTitle: "📋 Hanampy facture",
+            amountLabel: "Vola",
+            sourceLabel: "Fiaviana",
+            reasonLabel: "Antony",
+            billLabel: "Anarana",
+            dateLabel: "Daty",
+            dueDateLabel: "Daty tokony aloa",
+            emojiLabel: "Sary",
+            noteLabel: "Fanamarihana",
+            save: "Tehirizo",
+            cancel: "Ajanona",
+            settingsTitle: "⚙️ Fikirana",
+            languageLabel: "🌐 Fiteny",
+            currencyLabel: "💱 Vola",
+            budgetLabel: "🎯 Tetibola isam-bolana",
+            close: "Akatona",
+            months: ["Janoary","Febroary","Martsa","Aprily","Mey","Jona","Jolay","Aogositra","Septambra","Oktobra","Novambra","Desambra"],
+            btnIncome: "💰 Fidiram-bola",
+            btnExpense: "💸 Fandaniana",
+            btnBill: "📋 Facture",
+            positiveMsg: "🎉 Ao amin'ny lafy tsara ianao !",
+            negativeMsg: "⚠️ Tandremo, ratsy ny solde.",
+            zeroMsg: "🤝 Mitovy ny vola.",
+            helpTitle: "❓ Torolàlana",
+            helpContent: `<p><strong>💰 Solde ankehitriny</strong> : ny volanao manontolo.</p><p><strong>📆 Famintinana</strong> : fidiram-bola sy fandaniana isam-bolana.</p><p><strong>💳 Fifanakalozana</strong> : ampio ny fidiram-bola sy fandaniana.</p><p><strong>📋 Facture</strong> : faktiora tsy maintsy aloa, tsindrio rehefa voaloa.</p><p><strong>⚙️ Fikirana</strong> : fiteny, vola, tetibola.</p><p><strong>📊 Tatitra</strong> : famintinana an-tsary, fanondranana/fampidirana data.</p>`,
+            reportPeriodLabel: "Vanin-taona",
+            reportIncomeLabel: "Fidiram-bola",
+            reportExpenseLabel: "Fandaniana",
+            reportBalanceLabel: "Solde",
+            chartTitle: "Fiovana isam-bolana",
+            exportBtn: "📤 Hivoaka",
+            importBtn: "📥 Hampiditra"
+        },
+        en: {
+            appTitle: "💰 Fintracker",
+            tabTransactions: "💳 Transactions",
+            tabBills: "📋 Bills",
+            tabReports: "📊 Reports",
+            lblSoldeActuel: "Current Balance",
+            lblIncome: "Income",
+            lblExpense: "Expense",
+            balancePrefix: "Month Balance",
+            emptyTransactions: "✨ No transactions yet",
+            emptyBills: "📋 No bills yet",
+            incomeTitle: "➕ Add Income",
+            expenseTitle: "➖ Add Expense",
+            billTitle: "📋 Add Bill",
+            amountLabel: "Amount",
+            sourceLabel: "Source",
+            reasonLabel: "Reason",
+            billLabel: "Label",
+            dateLabel: "Date",
+            dueDateLabel: "Due date (optional)",
+            emojiLabel: "Emoji",
+            noteLabel: "Note",
+            save: "Save",
+            cancel: "Cancel",
+            settingsTitle: "⚙️ Settings",
+            languageLabel: "🌐 Language",
+            currencyLabel: "💱 Currency",
+            budgetLabel: "🎯 Monthly Budget",
+            close: "Close",
+            months: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+            btnIncome: "💰 Income",
+            btnExpense: "💸 Expense",
+            btnBill: "📋 Bill",
+            positiveMsg: "🎉 You're saving well!",
+            negativeMsg: "⚠️ Warning, negative balance.",
+            zeroMsg: "🤝 Balance is even.",
+            helpTitle: "❓ User Guide",
+            helpContent: `<p><strong>💰 Current Balance</strong> : total money.</p><p><strong>📆 Monthly Summary</strong> : month's income and expenses.</p><p><strong>💳 Transactions</strong> : add income/expenses with date, emoji, note.</p><p><strong>📋 Bills</strong> : manage bills, check when paid.</p><p><strong>⚙️ Settings</strong> : language, currency, budget.</p><p><strong>📊 Reports</strong> : multi-month summary, charts, export/import.</p>`,
+            reportPeriodLabel: "Period",
+            reportIncomeLabel: "Income",
+            reportExpenseLabel: "Expense",
+            reportBalanceLabel: "Balance",
+            chartTitle: "Monthly trend",
+            exportBtn: "📤 Export",
+            importBtn: "📥 Import"
+        }
+    };
+
+    const currencies = {
+        MGA: { symbol: 'Ar', decimals: 0, template: '{amount} Ar' },
+        EUR: { symbol: '€', decimals: 2, template: '{amount} €' },
+        USD: { symbol: '$', decimals: 2, template: '${amount}' }
+    };
+    const emojis = ['💰','🛒','🍔','🚗','🎓','🏠','🎁','💊','📱','🎉','✈️','💡','🐶','❤️','➕','📋'];
+
+    let currentLang = localStorage.getItem('lang') || 'fr';
+    let currentCurrency = localStorage.getItem('currency') || 'MGA';
+    let darkMode = localStorage.getItem('darkMode') === 'true';
+    let monthlyBudget = parseFloat(localStorage.getItem('monthlyBudget')) || 0;
+    let selectedYear = new Date().getFullYear();
+    let selectedMonth = new Date().getMonth();
+    let activeTab = 'transactions';
+    let selectedIncomeEmoji = '💰';
+    let selectedExpenseEmoji = '💸';
+    let selectedBillEmoji = '📋';
+
+    function applyDarkMode() {
+        document.body.classList.toggle('dark', darkMode);
+        document.getElementById('darkModeToggle').textContent = darkMode ? '☀️' : '🌙';
+    }
+    function formatCurrency(amount) {
+        const cfg = currencies[currentCurrency];
+        return cfg.template.replace('{amount}', amount.toFixed(cfg.decimals));
+    }
+    function todayString() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function getTransactions() { return JSON.parse(localStorage.getItem('transactions') || '[]'); }
+    function saveTransactions(tx) { localStorage.setItem('transactions', JSON.stringify(tx)); }
+    function getBills() { return JSON.parse(localStorage.getItem('bills') || '[]'); }
+    function saveBills(b) { localStorage.setItem('bills', JSON.stringify(b)); }
+
+    function translateStatic() {
+        const t = translations[currentLang];
+        document.getElementById('appTitle').textContent = t.appTitle;
+        document.getElementById('tabTransactions').textContent = t.tabTransactions;
+        document.getElementById('tabBills').textContent = t.tabBills;
+        document.getElementById('tabReports').textContent = t.tabReports;
+        document.getElementById('lblSoldeActuel').textContent = t.lblSoldeActuel;
+        document.getElementById('lblIncome').textContent = t.lblIncome;
+        document.getElementById('lblExpense').textContent = t.lblExpense;
+        document.getElementById('emptyTransactions').textContent = t.emptyTransactions;
+        document.getElementById('emptyBills').textContent = t.emptyBills;
+        document.getElementById('incomeTitle').textContent = t.incomeTitle;
+        document.getElementById('expenseTitle').textContent = t.expenseTitle;
+        document.getElementById('billTitle').textContent = t.billTitle;
+        document.querySelector('#incomeModal label[for="incomeAmount"]').textContent = t.amountLabel;
+        document.querySelector('#incomeModal label[for="incomeSource"]').textContent = t.sourceLabel;
+        document.querySelector('#incomeModal label[for="incomeDate"]').textContent = t.dateLabel;
+        document.querySelector('#expenseModal label[for="expenseAmount"]').textContent = t.amountLabel;
+        document.querySelector('#expenseModal label[for="expenseReason"]').textContent = t.reasonLabel;
+        document.querySelector('#expenseModal label[for="expenseDate"]').textContent = t.dateLabel;
+        document.querySelector('#billModal label[for="billLabel"]').textContent = t.billLabel;
+        document.querySelector('#billModal label[for="billAmount"]').textContent = t.amountLabel;
+        document.querySelector('#billModal label[for="billDueDate"]').textContent = t.dueDateLabel;
+        document.getElementById('saveIncome').textContent = t.save;
+        document.getElementById('cancelIncome').textContent = t.cancel;
+        document.getElementById('saveExpense').textContent = t.save;
+        document.getElementById('cancelExpense').textContent = t.cancel;
+        document.getElementById('saveBill').textContent = t.save;
+        document.getElementById('cancelBill').textContent = t.cancel;
+        document.getElementById('settingsTitle').textContent = t.settingsTitle;
+        document.getElementById('lblLanguage').textContent = t.languageLabel;
+        document.getElementById('lblCurrency').textContent = t.currencyLabel;
+        document.getElementById('lblBudget').textContent = t.budgetLabel;
+        document.getElementById('closeSettings').textContent = t.close;
+        document.getElementById('helpTitle').textContent = t.helpTitle;
+        document.getElementById('helpContent').innerHTML = t.helpContent;
+        updateMonthLabel();
+        updateBottomBar();
+        markActiveOptions();
+        document.getElementById('lblReportIncome').textContent = t.reportIncomeLabel;
+        document.getElementById('lblReportExpense').textContent = t.reportExpenseLabel;
+        document.getElementById('lblReportBalance').textContent = t.reportBalanceLabel;
+        document.getElementById('chartTitle').textContent = t.chartTitle;
+        document.getElementById('btnExport').innerHTML = t.exportBtn;
+        document.getElementById('btnImport').innerHTML = t.importBtn;
+    }
+
+    function updateMonthLabel() {
+        document.getElementById('currentMonthLabel').textContent = `${translations[currentLang].months[selectedMonth]} ${selectedYear}`;
+    }
+    function markActiveOptions() {
+        document.querySelectorAll('#languageOptions button').forEach(b => b.classList.toggle('active', b.dataset.lang === currentLang));
+        document.querySelectorAll('#currencyOptions button').forEach(b => b.classList.toggle('active', b.dataset.currency === currentCurrency));
+    }
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        document.getElementById('tab-content-transactions').classList.toggle('active', tab === 'transactions');
+        document.getElementById('tab-content-bills').classList.toggle('active', tab === 'bills');
+        document.getElementById('tab-content-reports').classList.toggle('active', tab === 'reports');
+        updateBottomBar();
+        if (tab === 'bills') renderBills();
+        if (tab === 'reports') updateReport();
+    }
+    function updateBottomBar() {
+        const bar = document.getElementById('bottomBar');
+        const t = translations[currentLang];
+        if (activeTab === 'transactions') {
+            bar.innerHTML = `<button class="btn-action btn-income" id="btnAddIncome"><span>💰</span> ${t.btnIncome.replace('💰 ','')}</button><button class="btn-action btn-expense" id="btnAddExpense"><span>💸</span> ${t.btnExpense.replace('💸 ','')}</button>`;
+            document.getElementById('btnAddIncome').addEventListener('click', openIncomeModal);
+            document.getElementById('btnAddExpense').addEventListener('click', openExpenseModal);
+        } else if (activeTab === 'bills') {
+            bar.innerHTML = `<button class="btn-action btn-bill" id="btnAddBill"><span>📋</span> ${t.btnBill.replace('📋 ','')}</button>`;
+            document.getElementById('btnAddBill').addEventListener('click', openBillModal);
+        } else {
+            bar.innerHTML = '';
+        }
+    }
+
+    // --- Transactions ---
+    function addTransaction(type, amount, desc, sourceOrReason, dateStr, note, emoji) {
+        const txn = {
+            id: Date.now(),
+            type, amount: parseFloat(amount), description: desc,
+            source: type==='income' ? sourceOrReason : '',
+            reason: type==='expense' ? sourceOrReason : '',
+            note, date: new Date(dateStr).toISOString(), emoji
+        };
+        const txns = getTransactions();
+        txns.push(txn);
+        saveTransactions(txns);
+        refreshTransactionsUI();
+        launchConfetti();
+    }
+    function deleteTransaction(id) {
+        saveTransactions(getTransactions().filter(t=>t.id!==id));
+        refreshTransactionsUI();
+    }
+    function getFilteredTransactions() {
+        return getTransactions().filter(t=>{
+            const d = new Date(t.date);
+            return d.getFullYear()===selectedYear && d.getMonth()===selectedMonth;
+        });
+    }
+    function calculateTotals(filtered) {
+        let inc=0, exp=0;
+        filtered.forEach(t=>{ if(t.type==='income') inc+=t.amount; else exp+=t.amount; });
+        return {income:inc, expense:exp, balance:inc-exp};
+    }
+    function calculateOverallBalance() {
+        const all=getTransactions(); let inc=0, exp=0;
+        all.forEach(t=>{ if(t.type==='income') inc+=t.amount; else exp+=t.amount; });
+        return inc-exp;
+    }
+    function refreshTransactionsUI() {
+        updateSoldeActuel();
+        renderTransactions();
+        updateSummary();
+    }
+    function updateSoldeActuel() {
+        const solde = calculateOverallBalance();
+        const el = document.getElementById('soldeActuelValue');
+        el.textContent = formatCurrency(solde);
+        el.style.color = solde>=0 ? 'var(--income)' : 'var(--danger)';
+        const msgEl = document.getElementById('balanceMsg');
+        const t = translations[currentLang];
+        msgEl.textContent = solde>0 ? t.positiveMsg : (solde<0 ? t.negativeMsg : t.zeroMsg);
+        msgEl.style.color = solde>=0 ? 'var(--income)' : 'var(--danger)';
+    }
+    function renderTransactions() {
+        const container = document.getElementById('transactionsList');
+        container.querySelectorAll('.transaction-item').forEach(e=>e.remove());
+        const filtered = getFilteredTransactions();
+        const empty = document.getElementById('emptyTransactions');
+        if(filtered.length===0) { empty.style.display='block'; return; }
+        empty.style.display='none';
+        filtered.sort((a,b)=>new Date(b.date)-new Date(a.date)).forEach(t=>{
+            const div = document.createElement('div');
+            div.className='transaction-item';
+            const sign = t.type==='income'?'+':'-';
+            const amtClass = t.type;
+            const emoji = t.emoji || (t.type==='income'?'💰':'💸');
+            const desc = t.type==='income'?(t.source||t.description):(t.reason||t.description);
+            const dateStr = new Date(t.date).toLocaleDateString(currentLang, {day:'numeric',month:'short',year:'numeric'});
+            const noteHtml = t.note ? `<div class="note">📝 ${t.note}</div>` : '';
+            div.innerHTML = `<div class="txn-emoji">${emoji}</div><div class="txn-info"><div class="description">${desc}</div><div class="meta">${dateStr}</div>${noteHtml}</div><div class="txn-amount ${amtClass}">${sign}${formatCurrency(t.amount)}</div><button class="delete-btn" data-id="${t.id}">🗑️</button>`;
+            container.appendChild(div);
+        });
+    }
+    function updateSummary() {
+        const filtered = getFilteredTransactions();
+        const {income, expense, balance} = calculateTotals(filtered);
+        document.getElementById('totalIncome').textContent = formatCurrency(income);
+        document.getElementById('totalExpense').textContent = formatCurrency(expense);
+        const balEl = document.getElementById('balance');
+        balEl.textContent = `${translations[currentLang].balancePrefix} : ${formatCurrency(balance)}`;
+        balEl.style.color = balance>=0 ? 'var(--income)' : 'var(--danger)';
+        if (monthlyBudget > 0) {
+            document.getElementById('budgetBarContainer').style.display='block';
+            document.getElementById('budgetLabel').style.display='flex';
+            const percent = Math.min(100, (expense / monthlyBudget) * 100);
+            document.getElementById('budgetFill').style.width = percent+'%';
+            document.getElementById('budgetPercent').textContent = percent.toFixed(0)+'%';
+        } else {
+            document.getElementById('budgetBarContainer').style.display='none';
+            document.getElementById('budgetLabel').style.display='none';
+        }
+    }
+
+    // --- Factures ---
+    function addBill(label, amount, dueDate, note, emoji) {
+        const bill = { id: Date.now(), label, amount: parseFloat(amount), dueDate: dueDate || null, note, emoji, paid: false };
+        const bills = getBills();
+        bills.push(bill);
+        saveBills(bills);
+        renderBills();
+        launchConfetti();
+    }
+    function toggleBillPaid(id) {
+        const bills = getBills();
+        const bill = bills.find(b => b.id === id);
+        if (bill) { bill.paid = !bill.paid; saveBills(bills); renderBills(); }
+    }
+    function deleteBill(id) {
+        saveBills(getBills().filter(b => b.id !== id));
+        renderBills();
+    }
+    function renderBills() {
+        const container = document.getElementById('billsList');
+        container.querySelectorAll('.bill-item').forEach(e=>e.remove());
+        const bills = getBills();
+        const empty = document.getElementById('emptyBills');
+        if (bills.length === 0) { empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        bills.sort((a,b) => {
+            if (a.paid !== b.paid) return a.paid ? 1 : -1;
+            if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+            return 0;
+        });
+        bills.forEach(bill => {
+            const div = document.createElement('div');
+            div.className = 'bill-item';
+            const amountClass = bill.paid ? 'paid' : 'pending';
+            const emoji = bill.emoji || '📋';
+            const dueStr = bill.dueDate ? new Date(bill.dueDate).toLocaleDateString(currentLang, {day:'numeric',month:'short',year:'numeric'}) : '';
+            const noteHtml = bill.note ? `<div class="note">📝 ${bill.note}</div>` : '';
+            div.innerHTML = `<input type="checkbox" class="bill-paid-check" ${bill.paid ? 'checked' : ''} data-id="${bill.id}"><div class="bill-emoji">${emoji}</div><div class="bill-info"><div class="description">${bill.label}</div><div class="meta">${dueStr ? 'Échéance: ' + dueStr : ''}</div>${noteHtml}</div><div class="bill-amount ${amountClass}">${formatCurrency(bill.amount)}</div><button class="delete-btn" data-id="${bill.id}">🗑️</button>`;
+            container.appendChild(div);
+        });
+        document.querySelectorAll('.bill-paid-check').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const id = parseInt(e.target.dataset.id);
+                toggleBillPaid(id);
+            });
+        });
+    }
+
+    // --- Rapports ---
+    function updateReport() {
+        const months = parseInt(document.getElementById('reportPeriod').value);
+        const now = new Date();
+        const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const startDate = new Date(endDate.getFullYear(), endDate.getMonth() - months + 1, 1);
+        const transactions = getTransactions();
+        let totalIncome = 0, totalExpense = 0;
+        const monthlyData = [];
+        const tempDate = new Date(startDate);
+        while (tempDate <= endDate) {
+            monthlyData.push({ year: tempDate.getFullYear(), month: tempDate.getMonth(), income: 0, expense: 0, label: translations[currentLang].months[tempDate.getMonth()].substring(0,3) });
+            tempDate.setMonth(tempDate.getMonth() + 1);
+        }
+        transactions.forEach(txn => {
+            const d = new Date(txn.date);
+            if (d >= startDate && d <= endDate) {
+                if (txn.type === 'income') totalIncome += txn.amount;
+                else totalExpense += txn.amount;
+                const mIndex = monthlyData.findIndex(m => m.year === d.getFullYear() && m.month === d.getMonth());
+                if (mIndex !== -1) {
+                    if (txn.type === 'income') monthlyData[mIndex].income += txn.amount;
+                    else monthlyData[mIndex].expense += txn.amount;
+                }
+            }
+        });
+        const balance = totalIncome - totalExpense;
+        document.getElementById('reportIncome').textContent = formatCurrency(totalIncome);
+        document.getElementById('reportExpense').textContent = formatCurrency(totalExpense);
+        const balanceEl = document.getElementById('reportBalance');
+        balanceEl.textContent = formatCurrency(balance);
+        balanceEl.style.color = balance >= 0 ? 'var(--income)' : 'var(--danger)';
+        const maxAmount = Math.max(...monthlyData.map(m => Math.max(m.income, m.expense)), 1);
+        const chartBars = document.getElementById('chartBars');
+        const chartLabels = document.getElementById('chartLabels');
+        chartBars.innerHTML = '';
+        chartLabels.innerHTML = '';
+        monthlyData.forEach(m => {
+            const incomeBar = document.createElement('div');
+            incomeBar.className = 'chart-bar';
+            incomeBar.style.height = (m.income / maxAmount) * 100 + '%';
+            incomeBar.style.backgroundColor = 'var(--income)';
+            incomeBar.title = `Revenus: ${formatCurrency(m.income)}`;
+            chartBars.appendChild(incomeBar);
+            const expenseBar = document.createElement('div');
+            expenseBar.className = 'chart-bar';
+            expenseBar.style.height = (m.expense / maxAmount) * 100 + '%';
+            expenseBar.style.backgroundColor = 'var(--danger)';
+            expenseBar.title = `Dépenses: ${formatCurrency(m.expense)}`;
+            chartBars.appendChild(expenseBar);
+            const label = document.createElement('div');
+            label.className = 'chart-label';
+            label.textContent = m.label;
+            chartLabels.appendChild(label);
+        });
+    }
+
+    // Export/Import
+    function exportData() {
+        const data = {
+            transactions: getTransactions(),
+            bills: getBills(),
+            settings: { lang: currentLang, currency: currentCurrency, darkMode, monthlyBudget }
+        };
+        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `fintracker_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
+    function importData(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                if (data.transactions && data.bills) {
+                    if (confirm("Importer ces données remplacera toutes vos données actuelles. Continuer ?")) {
+                        saveTransactions(data.transactions);
+                        saveBills(data.bills);
+                        if (data.settings) {
+                            currentLang = data.settings.lang || 'fr';
+                            currentCurrency = data.settings.currency || 'MGA';
+                            darkMode = data.settings.darkMode || false;
+                            monthlyBudget = data.settings.monthlyBudget || 0;
+                            localStorage.setItem('lang', currentLang);
+                            localStorage.setItem('currency', currentCurrency);
+                            localStorage.setItem('darkMode', darkMode);
+                            localStorage.setItem('monthlyBudget', monthlyBudget);
+                            applyDarkMode();
+                        }
+                        translateStatic();
+                        refreshTransactionsUI();
+                        renderBills();
+                        updateReport();
+                        alert("Importation réussie !");
+                    }
+                } else alert("Fichier invalide.");
+            } catch { alert("Erreur de lecture du fichier."); }
+        };
+        reader.readAsText(file);
+    }
+
+    // Event listeners
+    document.getElementById('btnExport').addEventListener('click', exportData);
+    document.getElementById('btnImport').addEventListener('click', () => document.getElementById('importFileInput').click());
+    document.getElementById('importFileInput').addEventListener('change', (e) => {
+        if (e.target.files[0]) { importData(e.target.files[0]); e.target.value = ''; }
+    });
+
+    // Emoji pickers
+    function buildEmojiPicker(containerId, callback) {
+        const c = document.getElementById(containerId);
+        c.innerHTML = '';
+        emojis.forEach(emoji => {
+            const b = document.createElement('button');
+            b.textContent = emoji;
+            b.onclick = (e) => { e.preventDefault(); c.querySelectorAll('button').forEach(b=>b.classList.remove('selected')); b.classList.add('selected'); callback(emoji); };
+            c.appendChild(b);
+        });
+        if (c.querySelector('button')) c.querySelector('button').classList.add('selected');
+    }
+    buildEmojiPicker('incomeEmojiPicker', (e)=> selectedIncomeEmoji = e);
+    buildEmojiPicker('expenseEmojiPicker', (e)=> selectedExpenseEmoji = e);
+    buildEmojiPicker('billEmojiPicker', (e)=> selectedBillEmoji = e);
+
+    // Modales
+    function openIncomeModal() {
+        document.getElementById('incomeAmount').value=''; document.getElementById('incomeSource').value=''; document.getElementById('incomeDate').value = todayString(); document.getElementById('incomeNote').value='';
+        document.getElementById('incomeModal').classList.add('active');
+    }
+    function openExpenseModal() {
+        document.getElementById('expenseAmount').value=''; document.getElementById('expenseReason').value=''; document.getElementById('expenseDate').value = todayString(); document.getElementById('expenseNote').value='';
+        document.getElementById('expenseModal').classList.add('active');
+    }
+    function openBillModal() {
+        document.getElementById('billLabel').value=''; document.getElementById('billAmount').value=''; document.getElementById('billDueDate').value=''; document.getElementById('billNote').value='';
+        document.getElementById('billModal').classList.add('active');
+    }
+    document.getElementById('cancelIncome').onclick = ()=> document.getElementById('incomeModal').classList.remove('active');
+    document.getElementById('cancelExpense').onclick = ()=> document.getElementById('expenseModal').classList.remove('active');
+    document.getElementById('cancelBill').onclick = ()=> document.getElementById('billModal').classList.remove('active');
+    document.getElementById('saveIncome').onclick = ()=>{
+        const a = document.getElementById('incomeAmount').value, s = document.getElementById('incomeSource').value.trim(), d = document.getElementById('incomeDate').value, n = document.getElementById('incomeNote').value.trim();
+        if(!a||parseFloat(a)<=0) return alert('Montant invalide'); if(!s) return alert('Provenance requise'); if(!d) return alert('Date requise');
+        addTransaction('income', a, s, s, d, n, selectedIncomeEmoji);
+        document.getElementById('incomeModal').classList.remove('active');
+    };
+    document.getElementById('saveExpense').onclick = ()=>{
+        const a = document.getElementById('expenseAmount').value, r = document.getElementById('expenseReason').value.trim(), d = document.getElementById('expenseDate').value, n = document.getElementById('expenseNote').value.trim();
+        if(!a||parseFloat(a)<=0) return alert('Montant invalide'); if(!r) return alert('Motif requis'); if(!d) return alert('Date requise');
+        addTransaction('expense', a, r, r, d, n, selectedExpenseEmoji);
+        document.getElementById('expenseModal').classList.remove('active');
+    };
+    document.getElementById('saveBill').onclick = ()=>{
+        const l = document.getElementById('billLabel').value.trim(), a = document.getElementById('billAmount').value, dd = document.getElementById('billDueDate').value, n = document.getElementById('billNote').value.trim();
+        if(!l) return alert('Libellé requis'); if(!a||parseFloat(a)<=0) return alert('Montant invalide');
+        addBill(l, a, dd, n, selectedBillEmoji);
+        document.getElementById('billModal').classList.remove('active');
+    };
+
+    // Suppression déléguée
+    document.getElementById('transactionsList').addEventListener('click', (e)=>{ if(e.target.classList.contains('delete-btn')){ if(confirm('Supprimer ?')) deleteTransaction(parseInt(e.target.dataset.id)); } });
+    document.getElementById('billsList').addEventListener('click', (e)=>{ if(e.target.classList.contains('delete-btn')){ e.stopPropagation(); if(confirm('Supprimer ?')) deleteBill(parseInt(e.target.dataset.id)); } });
+
+    // Paramètres
+    document.getElementById('settingsToggle').onclick = ()=>{
+        document.getElementById('budgetInput').value = monthlyBudget || '';
+        document.getElementById('settingsModal').classList.add('active');
+        markActiveOptions();
+    };
+    document.getElementById('closeSettings').onclick = ()=>{
+        const newBudget = parseFloat(document.getElementById('budgetInput').value) || 0;
+        monthlyBudget = newBudget;
+        localStorage.setItem('monthlyBudget', monthlyBudget);
+        refreshTransactionsUI();
+        document.getElementById('settingsModal').classList.remove('active');
+    };
+    document.querySelectorAll('#languageOptions button').forEach(b=>b.onclick=(e)=>{
+        currentLang = e.target.dataset.lang; localStorage.setItem('lang', currentLang);
+        translateStatic(); refreshTransactionsUI(); renderBills(); updateReport();
+    });
+    document.querySelectorAll('#currencyOptions button').forEach(b=>b.onclick=(e)=>{
+        currentCurrency = e.target.dataset.currency; localStorage.setItem('currency', currentCurrency);
+        refreshTransactionsUI(); renderBills(); updateReport();
+    });
+
+    // Aide
+    document.getElementById('helpBtn').onclick = ()=> document.getElementById('helpModal').classList.add('active');
+    document.getElementById('closeHelp').onclick = ()=> document.getElementById('helpModal').classList.remove('active');
+
+    // Navigation mois
+    document.getElementById('prevMonth').onclick = ()=>{ if(selectedMonth===0){selectedMonth=11; selectedYear--;} else selectedMonth--; updateMonthLabel(); refreshTransactionsUI(); };
+    document.getElementById('nextMonth').onclick = ()=>{ if(selectedMonth===11){selectedMonth=0; selectedYear++;} else selectedMonth++; updateMonthLabel(); refreshTransactionsUI(); };
+
+    // Onglets
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+    // Dark mode
+    document.getElementById('darkModeToggle').onclick = ()=>{ darkMode = !darkMode; localStorage.setItem('darkMode', darkMode); applyDarkMode(); };
+
+    // Confettis
+    function launchConfetti() {
+        for(let i=0;i<30;i++){
+            const c = document.createElement('div'); c.className='confetti';
+            c.style.left = Math.random()*100+'%'; c.style.background = ['#f43f5e','#f59e0b','#10b981','#8b5cf6','#ec4899'][Math.floor(Math.random()*5)];
+            c.style.animationDelay = Math.random()*0.5+'s'; c.style.width = Math.random()*10+6+'px'; c.style.height = Math.random()*6+4+'px';
+            document.body.appendChild(c); setTimeout(()=>c.remove(), 1200);
+        }
+    }
+
+    // Init
+    applyDarkMode();
+    translateStatic();
+    refreshTransactionsUI();
+    renderBills();
+    updateReport();
+</script>
+</body>
+</html>
